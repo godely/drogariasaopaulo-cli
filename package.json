@@ -16,6 +16,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "paguemenos-cli": "https://codeload.github.com/godely/paguemenos-cli/tar.gz/492fa70520ec429a96e00742e5673b68304477a2"
+    "paguemenos-cli": "https://codeload.github.com/godely/paguemenos-cli/tar.gz/4ed570e79d884c340a5305b41d5156b07a3245fc"
   }
 }
