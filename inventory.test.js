@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 
 test('stock executable joins only this banner and prints explicit zero and dated quantities', async t => {
   const folder = await mkdtemp(join(tmpdir(),'dsp-stock-'));
@@ -18,7 +18,7 @@ test('stock executable joins only this banner and prints explicit zero and dated
   await writeFile(mock,`globalThis.fetch=async input=>{
     const url=new URL(input);
     if (url.host!=='www.drogariasaopaulo.com.br') throw Error('unexpected retailer');
-    if (url.pathname.includes('catalog_system')) return Response.json([{items:[{itemId:'42',name:'Example',sellers:[{sellerId:'1'}]}]}]);
+    if (url.pathname.includes('catalog_system')) return Response.json([{items:[{itemId:'42',name:'Example',sellers:[{sellerId:'1',sellerName:'Drogaria São Paulo',commertialOffer:{Price:10}}]}]}]);
     if (!url.pathname.endsWith('nossas-lojas.js')) throw Error('unexpected URL');
     return Response.json({retorno:[
       {codigo:1,nome:'DSP Centro',latitude:1,longitude:1},
@@ -32,4 +32,20 @@ test('stock executable joins only this banner and prints explicit zero and dated
   assert.deepEqual(result.stores.map(s=>[s.id,s.quantity]),[['1',0],['2',1]]);
   assert.equal(result.coverage.checkedStores,2);
   assert.match(execFileSync(process.execPath,cmd,options),/DSP Norte/);
+  const run=(command,args)=> {
+    const result=spawnSync(process.execPath,['--import',mock,'cli.js',command,...args,'--lat','1','--lon','1','--json'],options);
+    assert.ok([0,3].includes(result.status),result.stderr);
+    return JSON.parse(result.stdout);
+  };
+  const fixed=run('compare',['42','--store','nearest','--brand-only']);
+  assert.equal(fixed.purchase.fixedBranchId,'1'); assert.equal(fixed.products[0].branchQuantity,0);
+  const elsewhere=run('compare',['42','--brand-only']);
+  assert.equal(elsewhere.products[0].closestStore.id,'2');
+  const basket=run('plan',['42','42']);
+  assert.equal(basket.status,'partial');
+  assert.equal(basket.plans[0].totalBRL,10);
+  const fixedBasket=run('plan',['42','42','--store','nearest']);
+  assert.equal(fixedBasket.tables[1].rows[0].store.id,'1');
+  assert.equal(fixedBasket.tables[1].rows[0].store.quantity,0);
+
 });
