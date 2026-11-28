@@ -49,3 +49,35 @@ test('stock executable joins only this banner and prints explicit zero and dated
   assert.equal(fixedBasket.tables[1].rows[0].store.quantity,0);
 
 });
+
+test('plan quotes only resolved lines at checkout and keeps an unknown pack out of the total', async t => {
+  const folder = await mkdtemp(join(tmpdir(),'dsp-partial-'));
+  t.after(()=>rm(folder,{recursive:true,force:true}));
+  const mock = join(folder,'checkout.mjs');
+  await writeFile(mock,`import assert from 'node:assert/strict';
+    globalThis.fetch=async (input,options)=>{
+      const url=new URL(input);
+      assert.equal(url.hostname,'www.drogariasaopaulo.com.br');
+      if(url.pathname.includes('catalog_system')) {
+        const sku=url.searchParams.get('fq');
+        assert.ok(['skuId:42','skuId:99'].includes(sku));
+        return Response.json(sku==='skuId:99' ? [] : [{items:[{itemId:'42',name:'Pack 42',
+          sellers:[{sellerId:'1',sellerName:'Drogaria São Paulo',commertialOffer:{Price:10}}]}]}]);
+      }
+      assert.ok(url.pathname.endsWith('orderForms/simulation'));
+      assert.deepEqual(JSON.parse(options.body).items,[{id:'42',seller:'1',quantity:2}]);
+      return Response.json({items:[{id:'42',seller:'1',availability:'available',quantity:2,sellingPrice:850,listPrice:1000}],
+        logisticsInfo:[{itemIndex:0,itemId:'42',slas:[{id:'Entrega',deliveryChannel:'delivery'}]}]});
+    };`);
+  const env={...process.env};
+  delete env.DROGARIASAOPAULO_BRANCH_STOCK_DB;
+  const run=spawnSync(process.execPath,['--import',mock,'cli.js','plan','42','99','--lat','1','--lon','1','--quantity','A=2','--json'],{encoding:'utf8',env});
+  assert.equal(run.status,3,run.stderr);
+  const plan=JSON.parse(run.stdout);
+  assert.equal(plan.status,'partial');
+  assert.equal(plan.estimatedProductTotalBRL,null);
+  assert.deepEqual(plan.pending.map(p=>[p.label,p.status]),[['B','unknown_sku']]);
+  assert.deepEqual(plan.partialQuote.labels,['A']);
+  assert.equal(plan.partialQuote.estimatedProductTotalBRL,17);
+  assert.equal(plan.partialQuote.items[0].localStatus,'available');
+});
