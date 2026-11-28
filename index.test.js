@@ -14,3 +14,14 @@ test('requires whole ingredient tokens and rejects conflicting product evidence'
   assert.equal(verifyProduct(row,intent).ingredientEvidence.field,'Princípio Ativo');
   assert.equal(verifyProduct({...row,name:'Morfina',facts:{'Princípio Ativo':['Tramadol']}},intent),undefined);
 });
+
+test('São Paulo directory verifies the banner, normalizes coordinates and sorts by the origin',async()=>{
+  const common={latitude:'-22,0',longitude:'-43,0'};
+  const request=async()=>Response.json({retorno:[
+    {...common,nome:'DROGARIAS PACHECO CENTRO',codigo:1},
+    {...common,nome:'DROGARIA SÃO PAULO CENTRO',codigo:2},
+    {...common,nome:'DSP PERTO',codigo:3,latitude:'-21,0'},
+    {...common,nome:'INDEFINIDA',codigo:4},
+  ]});
+  assert.deepEqual((await retailer.stores({latitude:-21,longitude:-43},request)).map(s=>s.id),['3','2']);
+});
