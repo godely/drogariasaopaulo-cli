@@ -12,6 +12,10 @@ function distanceKm(a,b) {
     Math.cos(a.latitude*rad)*Math.cos(b.latitude*rad)*Math.sin((a.longitude-b.longitude)*rad/2)**2;
   return 12742.0176*Math.asin(Math.sqrt(Math.min(1,d)));
 }
+function publishedRange(open,close) {
+  const valid = time => typeof time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+  return valid(open) && valid(close) ? open + ' às ' + close : null;
+}
 async function json(path, request) {
   const response = await request(new URL(path,site),{signal:AbortSignal.timeout(15000)});
   if (!response.ok) throw Error('Drogaria São Paulo directory HTTP '+response.status);
@@ -34,7 +38,14 @@ export async function stores(origin, request=fetch) {
     if (!/^(?:DROGARIA\s+SAO PAULO|DSP\b|DROGARIASP\b)/.test(banner) || store.codigo == null) continue;
     const address={street:store.endereco,number:store.numero,city:store.cidade,state:store.uf,district:store.bairro,
       postalCode:store.cep,latitude:coordinate(store.latitude,90),longitude:coordinate(store.longitude,180)};
-    rows.push({id:String(store.codigo),storeName:store.nome.trim(),address,phone:store.telefoneUm||null,whatsapp:store.whatsapp||null,
+    const openingHours = {
+      weekdays:publishedRange(store.horarioAberturaSegsex,store.horarioFechamentoSegsex),
+      saturday:publishedRange(store.horarioAberturaSabado,store.horarioFechamentoSabado),
+      sunday:publishedRange(store.horarioAberturaDomingo,store.horarioFechamentoDomingo),
+      holidays:store.indicadorAbreFeriado === false ? 'Fechada' : null,
+    };
+    rows.push({id:String(store.codigo),storeName:store.nome.trim(),address,phone:store.telefoneUm||store.telefoneDois||null,whatsapp:store.whatsapp||null,
+      openingHours, opensOnHolidays:typeof store.indicadorAbreFeriado === 'boolean' ? store.indicadorAbreFeriado : null,
       ...(point && {distanceKm:address.latitude==null||address.longitude==null?null:distanceKm(point,address)})});
   }
   return point?rows.sort((a,b)=>(a.distanceKm??Infinity)-(b.distanceKm??Infinity)):rows;

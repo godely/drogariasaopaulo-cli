@@ -72,3 +72,16 @@ test('factual lookup rejects another ingredient and a contradictory generic titl
     assert.deepEqual((await lookup([incompatible])('tansulosina Exemplo')).map(p=>p.sku),['4']);
   }
 });
+
+test('directory separates each published opening period, holiday information and missing hours',async()=>{
+  const common={nome:'DSP Centro',horarioAberturaSegsex:'08:00',horarioFechamentoSegsex:'22:00',
+    horarioAberturaSabado:'09:00',horarioFechamentoSabado:'16:00',horarioAberturaDomingo:'',horarioFechamentoDomingo:'',indicadorLojaAberta:true};
+  const rows=await retailer.stores(undefined,async()=>Response.json({retorno:[
+    {...common,codigo:1,indicadorAbreFeriado:true}, {...common,codigo:2,indicadorAbreFeriado:false,telefoneDois:'3232-1234'},
+    {...common,codigo:3,horarioAberturaSegsex:'24:90'},
+  ]}));
+  assert.deepEqual(rows[0].openingHours,{weekdays:'08:00 às 22:00',saturday:'09:00 às 16:00',sunday:null,holidays:null});
+  assert.equal(rows[0].opensOnHolidays,true); assert.equal(rows[1].openingHours.holidays,'Fechada');
+  assert.equal(rows[1].phone,'3232-1234'); assert.equal(rows[2].opensOnHolidays,null);
+  assert.equal(rows[2].openingHours.weekdays,null); assert.ok(!('isOpen' in rows[0]));
+});
