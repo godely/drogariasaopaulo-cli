@@ -1,6 +1,8 @@
 // A municipality or a nearby branch can center a public pickup search. Only the
 // retailer's uniquely identified pickup address can supply the store coordinates.
-const seats = 'https://geo.infrasa.gov.br/server/rest/services/Hosted/Sede_Municipal/FeatureServer/0/query';
+import {readFile} from 'node:fs/promises';
+
+let seatIndex;
 const shop = 'https://www.drogariasaopaulo.com.br';
 const fold = value => String(value ?? '').normalize('NFD').replace(/\p{M}/gu,'').toUpperCase().trim();
 const digits = value => String(value ?? '').replace(/\D/g,'');
@@ -39,6 +41,25 @@ function pickupFor(store, items) {
   return point(address.geoCoordinates);
 }
 
+async function municipalCenter(city, state) {
+  if (!city) return;
+  if (!seatIndex) {
+    seatIndex = readFile(new URL('./data/municipal-seats.tsv',import.meta.url),'utf8').then(contents => {
+      const byName = new Map();
+      for (const line of contents.trimEnd().split('\n')) {
+        const [name,uf,x,y] = line.split('\t');
+        const key = fold(name);
+        if (!byName.has(key)) byName.set(key,[]);
+        byName.get(key).push({state:uf,longitude:Number(x),latitude:Number(y)});
+      }
+      return byName;
+    });
+  }
+  const places = (await seatIndex).get(city) ?? [];
+  const candidates = state ? places.filter(p=>p.state===fold(state)) : places;
+  if (candidates.length===1) return candidates[0];
+}
+
 async function lookup(store, anchors, request) {
   const post = digits(store.cep);
   const city = fold(store.cidade);
@@ -59,15 +80,7 @@ async function lookup(store, anchors, request) {
     const coordinates = await find({postalCode:post,countryCode:'BRA'});
     if (coordinates) return coordinates;
   }
-  // Only a municipality name from the retailer directory is sent to Infra S.A.
-  if (!city || city.length > 80 || !/^[\p{L} '.-]+$/u.test(city)) return;
-  const url = new URL(seats);
-  url.search = new URLSearchParams({where:"UPPER(sede_municipal)='"+String(store.cidade).toUpperCase().trim().replaceAll("'","''")+"'",
-    outFields:'sede_municipal',returnGeometry:'true',outSR:'4326',resultRecordCount:'2',f:'json'});
-  const data = await query(url,request);
-  if (data?.features?.length !== 1 || data.exceededTransferLimit) return;
-  const geometry = data.features[0].geometry;
-  const center = point([geometry?.x, geometry?.y]);
+  const center = await municipalCenter(city,store.uf);
   if (center) return around(center);
 }
 
