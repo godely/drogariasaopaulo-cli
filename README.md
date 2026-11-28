@@ -23,7 +23,7 @@ Nos comandos `search`, `info`, `compare` e `plan`, uma grafia como “predniso�
 
 Use `--store nearest` com `compare` ou `plan` e uma localização para consultar a filial mais próxima entre as lojas com distância conhecida. A filial é escolhida no diretório antes de conferir a retirada. O resultado informa se o site ofereceu a quantidade pedida nessa filial. A quantidade total na prateleira continua desconhecida.
 
-`drogariasaopaulo stores --json` consulta o diretório nacional publicado no localizador “Nossas Lojas”. Os registros precisam identificar a bandeira Drogaria São Paulo. Com CEP ou coordenadas, as filiais com localização conhecida são ordenadas por distância em linha reta. O diretório fornece endereço e os telefones publicados. A quantidade na prateleira continua sem confirmação.
+`drogariasaopaulo stores --json` consulta o diretório nacional publicado no localizador “Nossas Lojas”. Os registros precisam identificar a bandeira Drogaria São Paulo. Com CEP ou coordenadas, as filiais com localização conhecida são ordenadas por distância em linha reta. O diretório fornece endereço, telefones e horários publicados para a semana, sábado e domingo. A indicação de funcionamento em feriados pode vir sem horário. A quantidade na prateleira continua sem confirmação.
 
 ### Arquivo de estoque por filial
 
