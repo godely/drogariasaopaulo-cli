@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { retailer } from './index.js';
+import { retailer, verifyProduct } from './index.js';
 import {compareOffers} from 'paguemenos-cli/compare';
+
+test('the administration list shared by São Paulo tablets cannot verify a sublingual pack', () => {
+  const intent={name:'rivotril',kind:'brand',suffix:'sublingual'};
+  const row={name:'Rivotril 2 mg 30 comprimidos',facts:{'Via de Administração':['Sublingual','Via Oral']}};
+  assert.equal(verifyProduct(row,intent),undefined);
+  const target={...row,name:'Rivotril 0,25 mg 30 comprimidos sublinguais'};
+  assert.equal(verifyProduct(target,intent).name,target.name);
+  assert.equal(verifyProduct(target,{...intent,suffix:'sublingual 2 mg'}),undefined);
+});
 
 test('a Drogaria São Paulo quote for a different storefront or farther branch cannot fill the closest branch',async()=>{
   const origin={latitude:-21,longitude:-43};
