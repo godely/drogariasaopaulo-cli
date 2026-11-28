@@ -33,3 +33,5 @@ node cli.js stock "$SKU" --cep "$CEP" --all --json
 ```
 
 As colunas são `retailer,id,store_code,quantity,timestamp`. O SKU e a filial usam os identificadores da Drogaria São Paulo. Quantidades ausentes ou antigas ficam desconhecidas. Após zeros explícitos nas filiais próximas, `--expand` permite consultar até 25 km e mostrar até dez filiais. A disponibilidade de um arquivo real com essas informações continua em investigação.
+
+Use `compare SKU --cep "$CEP" --store nearest` para consultar uma única filial, mesmo quando a quantidade informada é zero. Com um inventário configurado, `plan` compara a cesta por número de lojas e por total estimado, usando o preço de referência da própria rede. Preços de vendedores de marketplace ficam fora do cálculo. Sem um arquivo da rede, o modo de filial fixa pode localizar a loja e indicar estoque desconhecido.
