@@ -21,4 +21,6 @@ Nos comandos `search`, `info`, `compare` e `plan`, uma grafia como “predniso�
 
 `info` aceita vários nomes ou SKUs e `--brazil` para apresentações nacionais. Use `compare` para equivalentes verificados, `plan` para consultar a cesta inteira e `snapshot collect|read|export` para consultas persistidas. `stock` aceita CEP ou coordenadas. A quantidade solicitada é confirmada por simulação de atendimento.
 
+Use `--store nearest` com `compare` ou `plan` e uma localização para consultar a filial mais próxima entre as lojas com distância conhecida. A filial é escolhida no diretório antes de conferir a retirada. O resultado informa se o site ofereceu a quantidade pedida nessa filial. A quantidade total na prateleira continua desconhecida.
+
 `drogariasaopaulo stores --json` consulta o diretório nacional publicado no localizador “Nossas Lojas”. Os registros precisam identificar a bandeira Drogaria São Paulo. Com CEP ou coordenadas, as filiais com localização conhecida são ordenadas por distância em linha reta. O diretório fornece endereço e os telefones publicados. A quantidade na prateleira continua sem confirmação.
