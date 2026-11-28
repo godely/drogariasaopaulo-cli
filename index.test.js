@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { retailer } from './index.js';
+import {compareOffers} from 'paguemenos-cli/compare';
+
+test('a Drogaria São Paulo quote for a different storefront or farther branch cannot fill the closest branch',async()=>{
+  const origin={latitude:-21,longitude:-43};
+  const row={sku:'50',sellerId:'1',name:'Teste'};
+  const source={stores:place=>retailer.stores(place,async()=>Response.json({retorno:[
+    {nome:'DSP Centro',codigo:3,latitude:-21,longitude:-43},
+    {nome:'DROGARIA SÃO PAULO Leste',codigo:7,latitude:-21.1,longitude:-43},
+  ]})),local:async()=>({...row,requestedQuantity:1,localStatus:'available',methods:[
+    {channel:'pickup-in-point',pickupPointId:'drogariaspzona_7'},
+    {channel:'pickup-in-point',pickupPointId:'outraredecentro_3'},
+  ]})};
+  const result=await compareOffers({retailer:'drogariasaopaulo',coordinates:origin,store:'nearest'},
+    source,async()=>({products:[row]}));
+  assert.equal(result.fixedStore.branch.storeName,'DSP Centro');
+  assert.equal(result.products[0].pickupAtStore,'unconfirmed');
+  assert.deepEqual(result.products[0].methods,[]);
+  assert.equal(result.products[0].branchQuantity,null);
+});
 test('the sibling uses its own storefront and rejects invalid product identifiers', async () => {
   assert.equal(retailer.site, 'https://www.drogariasaopaulo.com.br');
   await assert.rejects(retailer.byGtin('123'), /GTIN/);
