@@ -25,6 +25,8 @@ Use `--store nearest` com `compare` ou `plan` e uma localização para consultar
 
 `drogariasaopaulo stores --json` consulta o diretório nacional publicado no localizador “Nossas Lojas”. Os registros precisam identificar a bandeira Drogaria São Paulo. Com CEP ou coordenadas, as filiais com localização conhecida são ordenadas por distância em linha reta. O diretório fornece endereço, telefones e horários publicados para a semana, sábado e domingo. A indicação de funcionamento em feriados pode vir sem horário. A quantidade na prateleira continua sem confirmação.
 
+O checkout do Grupo DPSP também pode oferecer retirada na Drogarias Pacheco. Para indicar uma filial da Drogaria São Paulo, o CLI cruza a conta e o código completos do ponto de retirada com a bandeira física no diretório. Para entradas identificadas apenas pelo bairro, aceita também o endereço completo confirmado em registro público. O JSON mantém o resultado dessa verificação em `pickupVerification`. Uma falha no diretório ainda permite mostrar uma entrega confirmada separadamente.
+
 ### Arquivo de estoque por filial
 
 Se a rede fornecer um inventário físico autorizado, importe o CSV completo com o utilitário incluído e defina a idade máxima aceitável da observação. A configuração é exclusiva da Drogaria São Paulo.
