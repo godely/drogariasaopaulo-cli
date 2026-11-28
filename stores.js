@@ -1,3 +1,4 @@
+import { classifyDirectory } from './branch-identity.js';
 const site = 'https://www.drogariasaopaulo.com.br';
 const directory = '/api/dataentities/PR/documents/f52e9e7f-a02c-11ea-8337-0a8ac637298d/arquivo/attachments/nossas-lojas.js';
 
@@ -21,6 +22,24 @@ async function json(path, request) {
   if (!response.ok) throw Error('Drogaria São Paulo directory HTTP '+response.status);
   return response.json();
 }
+// Cache only store identities and published directory fields. Local checkout
+// offers and shopper locations are never cached here.
+const directoryCache = new WeakMap();
+export async function readDirectory(request = fetch) {
+  const previous = directoryCache.get(request);
+  if (previous && previous.expires > Date.now()) return previous.promise;
+  const promise = json(directory, request).then(data => {
+    if (!Array.isArray(data.retorno) || !data.retorno.length) throw Error('Unexpected Drogaria São Paulo directory');
+    return classifyDirectory(data.retorno);
+  });
+  const entry = {promise, expires:Date.now() + 300_000};
+  directoryCache.set(request, entry);
+  try { return await promise; }
+  catch (error) {
+    if (directoryCache.get(request) === entry) directoryCache.delete(request);
+    throw error;
+  }
+}
 export async function stores(origin, request=fetch) {
   let point = origin;
   if (typeof origin==='string') {
@@ -30,12 +49,9 @@ export async function stores(origin, request=fetch) {
     point={latitude,longitude};
   }
   if(point && (coordinate(point.latitude,90)==null || coordinate(point.longitude,180)==null)) throw TypeError('Invalid directory origin');
-  const data=await json(directory,request);
-  if(!Array.isArray(data.retorno)) throw Error('Unexpected Drogaria São Paulo directory');
+  const roster = await readDirectory(request);
   const rows=[];
-  for(const store of data.retorno) {
-    const banner = String(store.nome??'').normalize('NFD').replace(/\p{M}/gu,'').toUpperCase();
-    if (!/^(?:DROGARIA\s+SAO PAULO|DSP\b|DROGARIASP\b)/.test(banner) || store.codigo == null) continue;
+  for (const {raw:store,id,point:checkoutPointId,source:bannerSource} of roster.stores) {
     const address={street:store.endereco,number:store.numero,city:store.cidade,state:store.uf,district:store.bairro,
       postalCode:store.cep,latitude:coordinate(store.latitude,90),longitude:coordinate(store.longitude,180)};
     const openingHours = {
@@ -44,7 +60,7 @@ export async function stores(origin, request=fetch) {
       sunday:publishedRange(store.horarioAberturaDomingo,store.horarioFechamentoDomingo),
       holidays:store.indicadorAbreFeriado === false ? 'Fechada' : null,
     };
-    rows.push({id:String(store.codigo),storeName:store.nome.trim(),address,phone:store.telefoneUm||store.telefoneDois||null,whatsapp:store.whatsapp||null,
+    rows.push({id,checkoutPointId,bannerSource,storeName:store.nome?.trim() || 'Drogaria São Paulo',address,phone:store.telefoneUm||store.telefoneDois||null,whatsapp:store.whatsapp||null,
       openingHours, opensOnHolidays:typeof store.indicadorAbreFeriado === 'boolean' ? store.indicadorAbreFeriado : null,
       ...(point && {distanceKm:address.latitude==null||address.longitude==null?null:distanceKm(point,address)})});
   }
