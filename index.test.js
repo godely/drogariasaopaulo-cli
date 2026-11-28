@@ -44,3 +44,31 @@ test('São Paulo directory verifies the banner, normalizes coordinates and sorts
   ]});
   assert.deepEqual((await retailer.stores({latitude:-21,longitude:-43},request)).map(s=>s.id),['3','2']);
 });
+
+test('factual lookup rejects another ingredient and a contradictory generic title before paging', async () => {
+  const {verifiedFactPage} = await import('./facts.js');
+  const {verifyProduct} = await import('./index.js');
+  const gtin = '7899547543766';
+  const row = (sku, name, active) => ({sku,gtin,brand:'Exemplo',name,
+    facts:{'Princípio Ativo':['Com '+active]}});
+  const wrong = row('1','Tansulosina Genérico Outro 0,4mg 30 cápsulas','Tansulosina');
+  const unrelated = row('2','Bicalutamida Exemplo 30 comprimidos','Bicalutamida');
+  const branded = row('3','Marca A Cloridrato de Tansulosina 0,4mg 30 cápsulas','Tansulosina');
+  const direct = row('4','Tansulosina Genérico Exemplo 0,4mg 30 cápsulas','Tansulosina');
+  const rows = [wrong, unrelated, branded, direct];
+  const intentFor = async () => ({kind:'ingredient',name:'tansulosina',suffix:'exemplo',suggestions:[]});
+  const ref = {name:branded.name,brand:'Marca A',details:{fabricante:'Exemplo'},eanCode:gtin,url:'marca-a.html'};
+  const source = {facts:async () => rows};
+  const lookup = refs => async (...args) => (await verifiedFactPage(source,verifyProduct,intentFor,async () => refs)(...args)).rows;
+  const partial = await verifiedFactPage(source,verifyProduct,intentFor,async () => { throw Error('offline'); })('tansulosina Exemplo');
+  assert.deepEqual(partial.rows.map(p=>p.sku), ['4']);
+  assert.deepEqual(partial.issues,['manufacturer_lookup_failed']);
+  const first = await lookup([ref])('tansulosina Exemplo',1,1);
+  assert.deepEqual(first.map(p=>p.sku),['3']);
+  assert.match(first[0].manufacturerSource,/marca-a\.html$/);
+  assert.deepEqual((await lookup([ref])('tansulosina Exemplo',2,1)).map(p=>p.sku),['4']);
+  for (const incompatible of [{...ref,eanCode:'000'}, {...ref,name:ref.name.replace('30','60')},
+    {...ref,details:{fabricante:'Outro'}}, {...ref,brand:'Outro'}, {...ref,isActive:false}]) {
+    assert.deepEqual((await lookup([incompatible])('tansulosina Exemplo')).map(p=>p.sku),['4']);
+  }
+});
